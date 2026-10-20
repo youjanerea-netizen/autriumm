@@ -49,6 +49,9 @@ iframe{display:block;width:100%;height:256px;border:0;background:#fbf8f2}
 fieldset{border:0;padding:0;display:flex;flex-direction:column;gap:8px}legend{margin-bottom:8px;padding:0}
 .q{min-height:44px;text-align:left;padding:8px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--sh);color:var(--fg);font:15px var(--sans);cursor:pointer}
 .q.ok{border-color:var(--ac);background:var(--as);color:var(--ai)}.q.no{border-color:var(--fg)}
+.xq{border:1px solid var(--ln);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}.xq legend{padding:0 4px}.xq legend .k{display:block;margin-bottom:4px}.xq.good{border-color:var(--ac)}.xq.bad{border-color:var(--fg)}
+.ch{display:flex;gap:10px;align-items:center;min-height:44px;padding:8px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--sh);cursor:pointer}.ch input{width:18px;height:18px;flex:none}.ch.ok{border-color:var(--ac);background:var(--as);color:var(--ai)}.ch.no{border-color:var(--fg)}
+.fi{min-height:44px;padding:0 12px;border:1px solid var(--ln);border-radius:10px;background:var(--sh);color:var(--fg);font:15px var(--sans)}.xs{font-size:17px}
 .ta{display:block;width:100%;box-sizing:border-box;min-height:190px;background:var(--cb);color:var(--cf);font:15px/1.6 var(--mono);padding:16px;border:0;border-radius:12px;resize:vertical;tab-size:2}
 details{border:1px solid var(--ln);background:var(--sh);border-radius:12px;padding:0 16px}
 summary{min-height:44px;display:flex;align-items:center;font-weight:500;cursor:pointer}
@@ -87,7 +90,7 @@ const T=s=>esc(String(s).replace(/(\p{L})'(\p{L})/gu,'$1’$2'));
 const rich=t=>t.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).map(p=>p.length>2&&p[0]==='`'&&p.endsWith('`')?'<code>'+esc(p.slice(1,-1))+'</code>':p.length>4&&p.startsWith('**')&&p.endsWith('**')?'<strong>'+T(p.slice(2,-2))+'</strong>':T(p)).join('');
 const TR=DATA.tracks,F=[],EX={};
 TR.forEach(t=>t.chapters.forEach(c=>c.lessons.forEach(l=>{F.push({t,c,l});l.exercises.forEach(e=>EX[e.id]=e)})));
-const NM={python:'Python',php:'PHP',javascript:'JavaScript',html:'HTML',css:'CSS',sql:'SQL'},LB={html:'HTML',css:'CSS',js:'JavaScript'};
+const NM={java:'Java',python:'Python',php:'PHP',javascript:'JavaScript',html:'HTML',css:'CSS',sql:'SQL'},LB={html:'HTML',css:'CSS',js:'JavaScript'};
 const sf=(s,t)=>s.replace(new RegExp('</'+t,'gi'),'<\\/'+t);
 const boot=id=>'(function(){var id='+JSON.stringify(id)+';function tx(a){try{return typeof a==="string"?a:JSON.stringify(a)}catch(e){return String(a)}}function p(k,a){try{parent.postMessage({channel:"atrium",id:id,kind:k,text:[].map.call(a,tx).join(" ")},"*")}catch(e){}}console.log=function(){p("log",arguments)};console.error=function(){p("error",arguments)};console.warn=function(){p("warn",arguments)};addEventListener("error",function(e){p("error",[e.message||"Erreur"])})})();';
 function doc(h,c,j,id){const st=sf(c,'style'),rt='<script>'+boot(id)+'<\/script><script>'+sf(j,'script')+'<\/script>',d=h.trim();
@@ -107,17 +110,29 @@ function run(g){const v=k=>g.querySelector('.e-'+k).value,c=g.querySelector('.cs
 const grid=(c,r)=>c.length?'<div class=tb><table><thead><tr>'+c.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+(r.length?r.map(w=>'<tr>'+w.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+c.length+'" class=mu>Aucune ligne.</td></tr>')+'</tbody></table></div>':'<p class=mu>Aucune colonne.</p>';
 const sol=e=>'<details><summary>Voir la solution</summary><pre>'+esc(e.solution)+'</pre></details>';
 const area=s=>'<textarea class=ta aria-label="Code" spellcheck=false autocapitalize=off autocorrect=off>\n'+esc(s)+'</textarea>';
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9#+.]/g,'');
+const xq=(q,n,id)=>{const o=(q.choices||[]).map((_,i)=>i).sort(()=>Math.random()-.5);
+return'<fieldset class=xq data-n="'+n+'"><legend><span class=k>Question '+(n+1)+(q.k==='multi'?' · plusieurs réponses':q.k==='fill'?' · réponse courte':'')+'</span>'+rich(q.prompt)+'</legend>'+(q.k==='fill'?'<input class=fi type=text aria-label="Réponse" autocapitalize=off autocorrect=off spellcheck=false>':o.map(i=>'<label class=ch><input type='+(q.k==='multi'?'checkbox':'radio')+' name="'+id+n+'" value='+i+'><span>'+T(q.choices[i])+'</span></label>').join(''))+'<p class="mu xo"></p></fieldset>'};
+function gradeExam(art,E){let ok=0;E.questions.forEach((q,n)=>{const fs=art.querySelector('[data-n="'+n+'"]'),want=[].concat(q.answer===undefined?[]:q.answer).sort();let good;
+if(q.k==='fill')good=q.accept.map(norm).includes(norm(fs.querySelector('.fi').value));
+else{const got=[...fs.querySelectorAll('input:checked')].map(x=>+x.value).sort();good=got.length===want.length&&got.every((v,i)=>v===want[i])}
+fs.querySelectorAll('.ch').forEach(l=>{const v=+l.firstChild.value,w=want.includes(v);l.classList.toggle('ok',w);l.classList.toggle('no',l.firstChild.checked&&!w)});
+fs.classList.toggle('good',good);fs.classList.toggle('bad',!good);ok+=good?1:0;
+fs.querySelector('.xo').innerHTML=(good?'<strong>Juste.</strong> ':'<strong>Faux.</strong> '+(q.k==='fill'?'Réponse attendue : '+esc(q.accept[0])+'. ':''))+rich(q.explain)});
+const n=E.questions.length,pc=Math.round(100*ok/n),pass=pc>=100*(E.pass||.7);PR.exam=PR.exam||{};PR.exam[E.id]=Math.max(PR.exam[E.id]||0,pc);if(pass)mark(E.id,true);else save();
+art.querySelector('.xr').innerHTML='<p class=xs><strong>'+ok+' / '+n+' · '+pc+' %</strong> '+(pass?'Examen réussi.':'Sous le seuil de '+Math.round(100*(E.pass||.7))+' %. Relis la leçon, puis recommence.')+'</p>'}
 const ty={
+exam:e=>'<p>'+T(e.intro||'Réponds à toutes les questions sans regarder la leçon, puis corrige. Les choix changent d’ordre à chaque essai. Seuil de réussite : '+Math.round(100*(e.pass||.7))+' %.')+'</p>'+(PR.exam&&PR.exam[e.id]!=null?'<p class=mu>Meilleur score : '+PR.exam[e.id]+' %</p>':'')+e.questions.map((q,n)=>xq(q,n,e.id)).join('')+'<div class=bar><button class="btn pri" data-a=exam>Corriger l’examen</button><button class=btn data-a=examr>Recommencer</button></div><div class=xr aria-live=polite></div>',
 quiz:e=>'<fieldset><legend>'+rich(e.prompt)+'</legend>'+e.choices.map((c,i)=>'<button class=q data-q="'+i+'">'+T(c)+'</button>').join('')+'<p class="mu ex-out"></p></fieldset>',
 web:e=>'<p>'+rich(e.prompt)+'</p>'+(e.hint?'<p class=mu>Indice : '+rich(e.hint)+'</p>':'')+pg(e.files,e.starter)+'<div class=bar><button class=btn data-a=sol>Voir la solution</button><button class="btn pri" data-a=done>'+(PR.exercises[e.id]?'Exercice fait':'Marquer comme fait')+'</button></div>',
 write:e=>'<p>'+rich(e.prompt)+'</p><p class=mu>'+NM[e.lang]+' ne s’exécute pas dans la page. Écris le code, compare-le à la sortie attendue, puis à la solution.</p>'+area(e.starter)+(e.expected?'<p class=mu>Sortie attendue</p><pre class=pl>'+esc(e.expected)+'</pre>':'')+'<div class=bar><button class="btn pri" data-a=chkw>Vérifier la forme</button></div><p class=ex-out></p>'+sol(e),
 sql:e=>'<p>'+rich(e.prompt)+'</p><p class=mu>'+T(e.goal)+'</p>'+e.seeds.map(s=>'<p class=k>'+esc(s.name)+'</p>'+grid(s.columns,s.rows)).join('')+area(e.starter)+'<div class=bar><button class="btn pri" data-a=sql>Exécuter</button></div><div class=ex-out></div>'+sol(e)};
-const ex=(e,i)=>'<article class=ex data-ex="'+e.id+'"><p class=k>Exercice '+(i+1)+'</p>'+ty[e.type](e)+'</article>';
+const ex=(e,i)=>'<article class=ex data-ex="'+e.id+'"><p class=k>'+(e.type==='exam'?'Examen de la leçon':'Exercice '+(i+1))+'</p>'+ty[e.type](e)+'</article>';
 const row=l=>'<a class=rw href="#/lecon/'+l.id+'"><span class=ck>'+(PR.lessons[l.id]?'✓':'')+'</span><span>'+T(l.title)+' <small class=mu>· '+l.minutes+' min</small></span></a>';
 const nav=()=>'<header class=nv><a class=lg href="#/">Atrium</a><nav><a href="#/atelier">Atelier</a></nav></header>';
 const nf=()=>nav()+'<main class=w><h1>Cette page n’existe pas.</h1><a class=btn href="#/">Retour au parcours</a></main>';
 function home(){const rd=F.filter(r=>PR.lessons[r.l.id]).length,last=F.find(r=>r.l.id===PR.last);
-return nav()+'<main class=w><p class=k>Débutant absolu → autonomie</p><h1>Apprendre à développer, page après page.</h1><p class="lead mu">HTML, CSS, JavaScript, Python, PHP et SQL. Des leçons, des exercices, et un atelier pour voir ce que le code donne à l’écran. Pas de points, pas de série, pas de récompense.</p><div class=bar><a class="btn pri" href="#/lecon/'+(last||F[0]).l.id+'">'+(last?'Reprendre : '+T(last.l.title):'Commencer par le début')+'</a><a class=btn href="#/atelier">Ouvrir l’atelier</a></div><p class="mu sm">'+TR.length+' parties · '+F.length+' leçons'+(rd?' · '+rd+' lues':'')+'</p><input id=sq type=search placeholder="Chercher une leçon" aria-label="Chercher une leçon"><div id=lst></div></main>'}
+return nav()+'<main class=w><p class=k>Débutant absolu → autonomie</p><h1>Apprendre à développer, page après page.</h1><p class="lead mu">Du terminal à React, de HTML à TypeScript, avec Python, Java, PHP, SQL, Git, l’algorithmique et l’IA comme outil. Des leçons, des exercices, et un atelier pour voir ce que le code donne à l’écran. Pas de points, pas de série, pas de récompense.</p><div class=bar><a class="btn pri" href="#/lecon/'+(last||F[0]).l.id+'">'+(last?'Reprendre : '+T(last.l.title):'Commencer par le début')+'</a><a class=btn href="#/atelier">Ouvrir l’atelier</a></div><p class="mu sm">'+TR.length+' parties · '+F.length+' leçons'+(rd?' · '+rd+' lues':'')+'</p><input id=sq type=search placeholder="Chercher une leçon" aria-label="Chercher une leçon"><div id=lst></div></main>'}
 function lst(){const o=$('#lst');if(!o)return;const q=$('#sq').value.trim().toLowerCase();
 if(q){const m=F.filter(r=>(r.l.title+' '+r.l.summary).toLowerCase().includes(q));o.innerHTML=m.length?m.map(r=>row(r.l)).join(''):'<p class=mu>Aucune leçon ne porte ces mots.</p>';return}
 o.innerHTML=TR.map(t=>{const ls=F.filter(r=>r.t.id===t.id),rd=ls.filter(r=>PR.lessons[r.l.id]).length;return'<a class=tc href="#/parcours/'+t.id+'"><span class=k>'+T(t.kicker)+'</span><b>'+T(t.title)+'</b><span class=mu>'+T(t.summary)+'</span><span class="mu sm">'+ls.length+' leçons'+(rd?' · '+rd+' lues':'')+'</span></a>'}).join('')}
@@ -135,6 +150,8 @@ if(d.q!==undefined){const i=+d.q,fs=b.closest('fieldset');fs.querySelectorAll('.
 const a=d.a;
 if(a==='copy'){const p=navigator.clipboard&&navigator.clipboard.writeText(b.closest('figure').querySelector('pre').textContent);if(p)p.then(()=>{b.textContent='Copié';setTimeout(()=>b.textContent='Copier',1200)}).catch(()=>{})}
 else if(a==='read'){PR.lessons[cur]=!PR.lessons[cur];save();b.textContent=PR.lessons[cur]?'✓ Lue':'Marquer comme lue'}
+else if(a==='exam')gradeExam(art,E);
+else if(a==='examr'){const t=document.createElement('div');t.innerHTML=ex(E,0);art.replaceWith(t.firstChild)}
 else if(a==='done'){const v=!PR.exercises[E.id];mark(E.id,v);b.textContent=v?'Exercice fait':'Marquer comme fait'}
 else if(a==='sol'){const g=art.querySelector('.pg'),on=g.dataset.sol!=='1',t=document.createElement('div');t.innerHTML=pg(E.files,on?E.solution:E.starter);const n=t.firstChild;n.dataset.sol=on?'1':'';g.replaceWith(n);run(n);b.textContent=on?'Revenir à mon énoncé':'Voir la solution'}
 else if(a==='chkw'){const c=art.querySelector('.ta').value,m=(E.mustInclude||[]).filter(x=>!c.includes(x)),o=art.querySelector('.ex-out');if(m.length)o.textContent='Il manque encore : '+m.join(', ')+'.';else{mark(E.id,true);o.textContent='Les éléments demandés sont là. Ce n’est pas une exécution : relis la sortie attendue et, si besoin, la solution.'}}
